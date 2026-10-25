@@ -1,0 +1,17 @@
+services:
+  hermes-kaggle-runner:
+    build: .
+    container_name: hermes-kaggle-runner
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+      - "11434:11434"
+    volumes:
+      - ./data:/kaggle/working
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
