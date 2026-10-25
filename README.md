@@ -14,7 +14,7 @@ In any Kaggle notebook, set:
 Then run this single line in a cell:
 
 ```python
-!git clone https://github.com/Hritish-Narayanan/hermes-kaggle-bridge.git /tmp/bridge && bash /tmp/bridge/start.sh
+!rm -rf /tmp/bridge && git clone https://github.com/Hritish-Narayanan/hermes-kaggle-bridge.git /tmp/bridge && bash /tmp/bridge/start.sh
 ```
 
 ---
