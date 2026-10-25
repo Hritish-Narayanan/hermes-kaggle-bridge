@@ -92,7 +92,7 @@ for _ in range(20):
 modelfile_path = os.path.join(WORKING_DIR, "Modelfile")
 modelfile_content = f"""
 FROM {MODEL_PATH}
-PARAMETER num_ctx 32768
+PARAMETER num_ctx 24576
 PARAMETER stop "<|im_start|>"
 PARAMETER stop "<|im_end|>"
 PARAMETER stop "<|endoftext|>"
