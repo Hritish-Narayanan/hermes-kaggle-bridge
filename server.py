@@ -131,7 +131,7 @@ def idle_watchdog_thread():
 threading.Thread(target=idle_watchdog_thread, daemon=True).start()
 
 # Lightweight HTTP Proxy with SSE streaming support & shutdown hook
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.request
 
 class WatchdogProxy(BaseHTTPRequestHandler):
@@ -206,7 +206,7 @@ class WatchdogProxy(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
-server = HTTPServer(("0.0.0.0", PROXY_PORT), WatchdogProxy)
+server = ThreadingHTTPServer(("0.0.0.0", PROXY_PORT), WatchdogProxy)
 threading.Thread(target=server.serve_forever, daemon=True).start()
 print(f"✅ Watchdog proxy active on port {PROXY_PORT}")
 
