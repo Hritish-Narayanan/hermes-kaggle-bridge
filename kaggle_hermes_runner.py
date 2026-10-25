@@ -189,14 +189,29 @@ class WatchdogProxy(BaseHTTPRequestHandler):
                         break
                     self.wfile.write(chunk)
                     self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            # Client (Hermes / Cloudflare) disconnected, canceled stream, or timed out
+            return
         except urllib.error.HTTPError as e:
-            self.send_response(e.code)
-            self.end_headers()
-            self.wfile.write(e.read())
+            try:
+                self.send_response(e.code)
+                self.end_headers()
+                self.wfile.write(e.read())
+            except (BrokenPipeError, ConnectionResetError):
+                pass
         except Exception as e:
-            self.send_response(500)
-            self.end_headers()
-            self.wfile.write(str(e).encode())
+            try:
+                self.send_response(500)
+                self.end_headers()
+                self.wfile.write(str(e).encode())
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+
+    def handle_one_request(self):
+        try:
+            super().handle_one_request()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def log_message(self, format, *args):
         pass
