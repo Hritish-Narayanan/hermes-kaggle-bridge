@@ -177,9 +177,62 @@ class WatchdogProxy(BaseHTTPRequestHandler):
         content_len = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_len) if content_len > 0 else None
         
+        is_stream = False
+        if body and method == "POST":
+            try:
+                data = json.loads(body.decode('utf-8'))
+                is_stream = bool(data.get('stream', False))
+            except Exception:
+                pass
+
         headers = {k: v for k, v in self.headers.items() if k.lower() not in ['host', 'content-length']}
-        
         req = urllib.request.Request(target_url, data=body, headers=headers, method=method)
+
+        if is_stream:
+            # Send SSE headers immediately so Cloudflare's 100s idle timeout never triggers
+            try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream")
+                self.send_header("Cache-Control", "no-cache")
+                self.send_header("Connection", "close")
+                self.end_headers()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+
+            stop_ka = threading.Event()
+            def keepalive():
+                while not stop_ka.wait(8):
+                    try:
+                        self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+                    except Exception:
+                        break
+
+            ka_thread = threading.Thread(target=keepalive, daemon=True)
+            ka_thread.start()
+
+            try:
+                with urllib.request.urlopen(req) as resp:
+                    stop_ka.set()
+                    while True:
+                        chunk = resp.read(1024)
+                        if not chunk:
+                            break
+                        self.wfile.write(chunk)
+                        self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                return
+            except Exception as e:
+                try:
+                    err_payload = json.dumps({"error": {"message": str(e), "type": "server_error"}})
+                    self.wfile.write(f"data: {err_payload}\n\n".encode())
+                    self.wfile.flush()
+                except Exception:
+                    pass
+            finally:
+                stop_ka.set()
+            return
+
         try:
             with urllib.request.urlopen(req) as resp:
                 self.send_response(resp.status)
